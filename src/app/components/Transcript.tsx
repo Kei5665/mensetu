@@ -174,9 +174,9 @@ function Transcript({
         <button
           onClick={onSendMessage}
           disabled={!canSend || !userText.trim()}
-          className="bg-gray-900 text-white rounded-full px-2 py-2 disabled:opacity-50"
+          className="bg-gray-900 text-white rounded-full px-4 py-2 disabled:opacity-50"
         >
-          <Image src="arrow.svg" alt="Send" width={24} height={24} />
+          テキスト送信
         </button>
       </div>
     </div>

@@ -1,4 +1,6 @@
-export type SessionStatus = "DISCONNECTED" | "CONNECTING" | "CONNECTED";
+export type Role = "user" | "assistant";
+
+export type SessionStatus = "INITIAL" | "CONNECTING" | "CONNECTED" | "DISCONNECTED" | "PAUSED" | "ERROR";
 
 export interface ToolParameterProperty {
   type: string;
