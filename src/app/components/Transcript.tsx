@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { TranscriptItem } from "@/app/types";
+import Image from "next/image";
 import { useTranscript } from "@/app/contexts/TranscriptContext";
 
 export interface TranscriptProps {
@@ -88,15 +89,24 @@ function Transcript({
 
             if (type === "MESSAGE") {
               const isUser = role === "user";
-              const baseContainer = "flex justify-end flex-col";
-              const containerClasses = `${baseContainer} ${isUser ? "items-end" : "items-start"}`;
-              const bubbleBase = `max-w-lg p-3 rounded-xl ${isUser ? "bg-gray-900 text-gray-100" : "bg-gray-100 text-black"}`;
+              const baseContainer = "flex flex-row gap-x-2 items-end";
+              const containerClasses = `${baseContainer} ${isUser ? "justify-end" : "justify-start"}`;
+              const bubbleBase = `max-w-lg p-3 rounded-xl ${isUser ? "bg-gray-900 text-gray-100 order-last" : "bg-gray-100 text-black order-last"}`;
               const isBracketedMessage = title.startsWith("[") && title.endsWith("]");
               const messageStyle = isBracketedMessage ? "italic text-gray-400" : "";
               const displayTitle = isBracketedMessage ? title.slice(1, -1) : title;
 
               return (
                 <div key={itemId} className={containerClasses}>
+                  {!isUser && (
+                    <Image
+                      src="/face.jpg"
+                      alt="Interviewer face"
+                      width={80}
+                      height={80}
+                      className="rounded-full flex-shrink-0 mb-2"
+                    />
+                  )}
                   <div className={bubbleBase}>
                     <div className={`text-xs ${isUser ? "text-gray-400" : "text-gray-500"} font-mono`}>
                       {timestamp}
