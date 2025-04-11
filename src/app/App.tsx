@@ -8,6 +8,7 @@ import { v4 as uuidv4 } from "uuid";
 import Transcript from "./components/Transcript";
 import BottomToolbar from "./components/BottomToolbar";
 import PreConnectScreen from "./components/PreConnectScreen";
+import Events from "./components/Events";
 
 // Types
 import { AgentConfig, SessionStatus } from "@/app/types";
@@ -42,19 +43,25 @@ function App() {
   const [isInitialLoad, setIsInitialLoad] = useState<boolean>(true);
 
   const [userText, setUserText] = useState<string>("");
+  const [isMicMuted, setIsMicMuted] = useState<boolean>(false);
+  const [isEventsPaneExpanded, setIsEventsPaneExpanded] =
+    useState<boolean>(true);
 
   const sendClientEvent = (eventObj: any, eventNameSuffix = "") => {
+    const eventType = `${eventObj.type}${eventNameSuffix ? ` ${eventNameSuffix}` : ""}`;
+    console.log(`[CLIENT EVENT SENDING] ${eventType}`, eventObj); // Log sending attempt
     if (dcRef.current && dcRef.current.readyState === "open") {
       logClientEvent(eventObj, eventNameSuffix);
       dcRef.current.send(JSON.stringify(eventObj));
+      console.log(`[CLIENT EVENT SENT] ${eventType}`); // Log successful send
     } else {
+      console.error(
+        `[CLIENT EVENT FAILED] ${eventType} - Data channel not open. State: ${dcRef.current?.readyState}`,
+        eventObj
+      );
       logClientEvent(
         { attemptedEvent: eventObj.type },
         "error.data_channel_not_open"
-      );
-      console.error(
-        "Failed to send message - no data channel available",
-        eventObj
       );
     }
   };
@@ -97,7 +104,7 @@ function App() {
         `Agent: ${selectedAgentName}`,
         currentAgent
       );
-      updateSession(true);
+      updateSession(false);
     }
   }, [selectedAgentConfigSet, selectedAgentName, sessionStatus]);
 
@@ -133,6 +140,7 @@ function App() {
       if (!audioElementRef.current) {
         audioElementRef.current = document.createElement("audio");
       }
+      audioElementRef.current.autoplay = true;
 
       const { pc, dc } = await createRealtimeConnection(
         EPHEMERAL_KEY,
@@ -250,7 +258,12 @@ function App() {
   };
 
   const handleSendTextMessage = () => {
-    if (!userText.trim()) return;
+    console.log('[DEBUG] handleSendTextMessage called'); // Log function call
+    if (!userText.trim() || sessionStatus !== "CONNECTED") {
+      console.log(`[DEBUG] handleSendTextMessage aborted. userText: '${userText}', sessionStatus: ${sessionStatus}`);
+      return;
+    }
+    console.log('[DEBUG] Proceeding to send message:', userText);
     cancelAssistantSpeech();
 
     sendClientEvent(
@@ -289,12 +302,36 @@ function App() {
         });
       }
       setSessionStatus("CONNECTING");
-      setSessionStatus("CONNECTED");
-      logClientEvent({}, "resumed");
+      logClientEvent({}, "resuming");
     } else {
       connectToRealtime();
     }
   };
+
+  const handleToggleMicMute = () => {
+    if (!pcRef.current || sessionStatus !== "CONNECTED") return;
+
+    const audioSender = pcRef.current.getSenders().find(s => s.track?.kind === 'audio');
+    if (audioSender && audioSender.track) {
+      const nextMuteState = !isMicMuted;
+      audioSender.track.enabled = !nextMuteState;
+      setIsMicMuted(nextMuteState);
+      logClientEvent({ muted: nextMuteState }, nextMuteState ? "mic_muted" : "mic_unmuted");
+    } else {
+      console.warn("Audio track sender not found, cannot toggle mute.");
+    }
+  };
+
+  useEffect(() => {
+    const storedLogsExpanded = localStorage.getItem("logsExpanded");
+    if (storedLogsExpanded) {
+      setIsEventsPaneExpanded(storedLogsExpanded === "true");
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("logsExpanded", isEventsPaneExpanded.toString());
+  }, [isEventsPaneExpanded]);
 
   return (
     <div className="flex h-screen flex-col">
@@ -312,7 +349,9 @@ function App() {
         <>
           <div className="flex flex-1 overflow-hidden">
             <div
-              className={`flex-1 overflow-y-auto bg-neutral-100 p-4 transition-all duration-300 ease-in-out w-full`}
+              className={`overflow-y-auto bg-neutral-100 p-4 transition-all duration-300 ease-in-out ${
+                isEventsPaneExpanded ? "w-1/2" : "w-full"
+              }`}
             >
               <Transcript
                 userText={userText}
@@ -324,10 +363,19 @@ function App() {
                 }
               />
             </div>
+            {isEventsPaneExpanded && (
+              <div className="w-1/2 border-l border-gray-300 bg-white">
+                <Events isExpanded={isEventsPaneExpanded} />
+              </div>
+            )}
           </div>
           <BottomToolbar
             sessionStatus={sessionStatus}
             onToggleConnection={onToggleConnection}
+            isMicMuted={isMicMuted}
+            onToggleMicMute={handleToggleMicMute}
+            isEventsPaneExpanded={isEventsPaneExpanded}
+            setIsEventsPaneExpanded={setIsEventsPaneExpanded}
           />
         </>
       )}
