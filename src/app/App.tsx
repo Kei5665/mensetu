@@ -34,7 +34,6 @@ function App() {
   const [selectedAgentConfigSet, setSelectedAgentConfigSet] =
     useState<AgentConfig[] | null>(null);
 
-  const [dataChannel, setDataChannel] = useState<RTCDataChannel | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const dcRef = useRef<RTCDataChannel | null>(null);
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
@@ -154,29 +153,10 @@ function App() {
       dc.addEventListener("message", (e: MessageEvent) => {
         handleServerEventRef.current(JSON.parse(e.data));
       });
-
-      setDataChannel(dc);
     } catch (err) {
       console.error("Error connecting to realtime:", err);
       setSessionStatus("DISCONNECTED");
     }
-  };
-
-  const disconnectFromRealtime = () => {
-    if (pcRef.current) {
-      pcRef.current.getSenders().forEach((sender) => {
-        if (sender.track) {
-          sender.track.stop();
-        }
-      });
-
-      pcRef.current.close();
-      pcRef.current = null;
-    }
-    setDataChannel(null);
-    setSessionStatus("DISCONNECTED");
-
-    logClientEvent({}, "disconnected");
   };
 
   const sendSimulatedUserMessage = (text: string) => {
